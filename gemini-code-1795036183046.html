@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Byte-Sized: The Data Decode Relay</title>
+    <style>
+        :root {
+            --bg-dark: #0b1120;
+            --panel-bg: #1e293b;
+            --panel-border: #334155;
+            --text-light: #f8fafc;
+            --text-muted: #94a3b8;
+
+            --blue-solid: #2563eb;
+            --blue-bg: #eff6ff;
+            --blue-text: #1e3a8a;
+
+            --yellow-solid: #d97706;
+            --yellow-bg: #fffbeb;
+            --yellow-text: #78350f;
+
+            --green-solid: #059669;
+            --green-bg: #ecfdf5;
+            --green-text: #064e3b;
+
+            --red-solid: #dc2626;
+            --red-bg: #fef2f2;
+            --red-text: #7f1d1d;
+
+            --accent-cyan: #38bdf8;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            margin: 0;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Header & HUD */
+        header {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            padding: 14px 22px;
+            border-radius: 12px;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: 1.35rem;
+            color: var(--accent-cyan);
+            letter-spacing: 0.5px;
+        }
+
+        .brand span {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .hud {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .hud-pill {
+            background: var(--bg-dark);
+            border: 1px solid var(--panel-border);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .hud-pill span {
+            color: var(--accent-cyan);
+        }
+
+        .btn-small {
+            background: #334155;
+            color: var(--text-light);
+            border: 1px solid #475569;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-small:hover {
+            background: #475569;
+        }
+
+        /* Main Layout */
+        .workspace {
+            width: 100%;
+            max-width: 1200px;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 18px;
+        }
+
+        /* Zone 1: Home Base Assembly */
+        .home-base {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 18px 22px;
+        }
+
+        .zone-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .zone-title {
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .step-badge {
+            background: #0f172a;
+            color: #fbbf24;
+            border: 1px solid #d97706;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .packet-assembly {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+        }
+
+        .slot {
+            min-height: 115px;
+            border-radius: 10px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .slot-tag {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            font-weight: 800;
+            letter-spacing: 0.6px;
+            margin-bottom: 6px;
+            opacity: 0.85;
+        }
+
+        .slot-content {
+            font-size: 0.98rem;
+            font-weight: 700;
+            line-height: 1.35;
+        }
+
+        /* Blue Slot */
+        .slot-blue {
+            background: var(--blue-bg);
+            color: var(--blue-text);
+            border: 3px solid var(--blue-solid);
+        }
+
+        /* Yellow Slot */
+        .slot-yellow {
+            background: rgba(255, 251, 235, 0.06);
+            border: 2px dashed var(--yellow-solid);
+            color: #fcd34d;
+        }
+
+        .slot-yellow.locked {
+            opacity: 0.45;
+        }
+
+        .slot-yellow.filled {
+            background: var(--yellow-bg);
+            color: var(--yellow-text);
+            border: 3px solid var(--yellow-solid);
+            opacity: 1;
+        }
+
+        /* Green Slot */
+        .slot-green {
+            background: rgba(236, 253, 245, 0.06);
+            border: 2px dashed var(--green-solid);
+            color: #6ee7b7;
+        }
+
+        .slot-green.locked {
+            opacity: 0.45;
+        }
+
+        .slot-green.filled {
+            background: var(--green-bg);
+            color: var(--green-text);
+            border: 3px solid var(--green-solid);
+            opacity: 1;
+        }
+
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .status-msg {
+            font-weight: 700;
+            font-size: 0.95rem;
+            min-height: 22px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button.primary-btn {
+            background: var(--accent-cyan);
+            color: #0b1120;
+            border: none;
+            padding: 11px 22px;
+            border-radius: 8px;
+            font-weight: 800;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        button.primary-btn:hover:not(:disabled) {
+            filter: brightness(1.1);
+        }
+
+        button.primary-btn:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+
+        button.primary-btn:disabled {
+            background: #334155;
+            color: #64748b;
+            cursor: not-allowed;
+        }
+
+        button.secondary-btn {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid #475569;
+            padding: 11px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        button.secondary-btn:hover {
+            color: var(--text-light);
+            border-color: var(--text-light);
+        }
+
+        /* Zone 2: Central Data Cloud */
+        .data-cloud {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 18px 22px;
+        }
+
+        .cloud-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 10px;
+            max-height: 390px;
+            overflow-y: auto;
+            padding: 4px;
+        }
+
+        .cloud-card {
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: transform 0.12s, opacity 0.2s, box-shadow 0.12s;
+            line-height: 1.3;
+        }
+
+        .cloud-card:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+
+        .cloud-card:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        .card-yellow {
+            background: var(--yellow-bg);
+            color: var(--yellow-text);
+            border-color: var(--yellow-solid);
+        }
+
+        .card-yellow.selected {
+            box-shadow: 0 0 0 3px #fbbf24;
+        }
+
+        .card-green {
+            background: var(--green-bg);
+            color: var(--green-text);
+            border-color: var(--green-solid);
+        }
+
+        .card-green.selected {
+            box-shadow: 0 0 0 3px #34d399;
+        }
+
+        .card-corrupt {
+            background: var(--red-bg);
+            color: var(--red-text);
+            border-color: var(--red-solid);
+        }
+
+        /* Zone 3: Server Rack Log */
+        .server-rack {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 16px 22px;
+        }
+
+        .rack-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .rack-chip {
+            background: #0f172a;
+            border: 1px solid var(--green-solid);
+            color: #6ee7b7;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        /* Modals */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(11, 17, 32, 0.88);
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+            z-index: 50;
+        }
+
+        .modal-card {
+            background: var(--panel-bg);
+            border: 2px solid var(--panel-border);
+            border-radius: 14px;
+            max-width: 520px;
+            width: 100%;
+            padding: 26px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-card.alert-mode {
+            border-color: var(--red-solid);
+            text-align: center;
+        }
+
+        .modal-card h2 {
+            margin-top: 0;
+            color: var(--accent-cyan);
+        }
+
+        .modal-card.alert-mode h2 {
+            color: #f87171;
+        }
+
+        .modal-card p, .modal-card li {
+            color: #cbd5e1;
+            line-height: 1.5;
+            font-size: 0.95rem;
+        }
+
+        .parity-input {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.25rem;
+            font-weight: 700;
+            text-align: center;
+            background: var(--bg-dark);
+            color: var(--text-light);
+            border: 2px solid #475569;
+            border-radius: 8px;
+            margin: 14px 0;
+        }
+
+        @media (max-width: 768px) {
+            .packet-assembly {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <h1>BYTE-SIZED // DATA DECODE RELAY</h1>
+            <span>High School Computer Data Review</span>
+        </div>
+        <div class="hud">
+            <div class="hud-pill">Server Rack: <span id="hud-score">0 / 20</span></div>
+            <div class="hud-pill">Errors: <span id="hud-errors">0</span></div>
+            <div class="hud-pill">Timer: <span id="hud-timer">12:00</span></div>
+            <button class="btn-small" onclick="toggleRulesModal(true)">Rules</button>
+            <button class="btn-small" onclick="resetGame()">Restart</button>
+        </div>
+    </header>
+
+    <main class="workspace">
+        <!-- Home Base: Sequential Packet Assembly -->
+        <section class="home-base">
+            <div class="zone-header">
+                <h2 class="zone-title">Home Base: 3-Stage Packet Assembly</h2>
+                <span class="step-badge" id="relay-step-indicator">Step 1: Find matching YELLOW Value in Data Cloud</span>
+            </div>
+
+            <div class="packet-assembly">
+                <div class="slot slot-blue">
+                    <span class="slot-tag">1. Concept / Prompt (Blue)</span>
+                    <div class="slot-content" id="slot-blue-text">Initializing...</div>
+                </div>
+
+                <div class="slot slot-yellow" id="slot-yellow-box">
+                    <span class="slot-tag">2. Raw Data / Value (Yellow)</span>
+                    <div class="slot-content" id="slot-yellow-text">Awaiting Yellow Card...</div>
+                </div>
+
+                <div class="slot slot-green locked" id="slot-green-box">
+                    <span class="slot-tag">3. Context / Application (Green)</span>
+                    <div class="slot-content" id="slot-green-text">Locked until Yellow matched</div>
+                </div>
+            </div>
+
+            <div class="action-bar">
+                <div class="status-msg" id="feedback-msg"></div>
+                <div class="btn-group">
+                    <button class="secondary-btn" onclick="clearCurrentPacket()">Reset Current Packet</button>
+                    <button class="primary-btn" id="btn-upload" onclick="uploadToServerRack()" disabled>Upload to Server Rack</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Central Data Cloud -->
+        <section class="data-cloud">
+            <div class="zone-header">
+                <h2 class="zone-title">Central Data Cloud (Shuffled Pool)</h2>
+                <span style="font-size: 0.85rem; color: var(--text-muted);" id="cloud-count">43 Cards Active (Includes 3 Corrupted Wildcards)</span>
+            </div>
+            <div class="cloud-grid" id="cloud-container"></div>
+        </section>
+
+        <!-- Server Rack Verified Uploads -->
+        <section class="server-rack">
+            <div class="zone-header" style="margin-bottom: 4px;">
+                <h2 class="zone-title">Server Rack: Verified Data Packets</h2>
+            </div>
+            <div class="rack-list" id="rack-list">
+                <span style="font-size: 0.85rem; color: var(--text-muted);" id="rack-empty-msg">No packets uploaded yet.</span>
+            </div>
+        </section>
+    </main>
+
+    <!-- Parity Check Penalty Modal -->
+    <div class="modal-backdrop" id="parity-modal">
+        <div class="modal-card alert-mode">
+            <h2 id="parity-title">⚠️ FIREWALL REJECTION: PARITY CHECK</h2>
+            <p id="parity-reason">Corrupted or mismatched data detected! Complete the binary parity check to unlock your relay runner.</p>
+            <p style="font-size: 1.2rem; font-weight: 800; color: #f8fafc; margin: 16px 0;" id="parity-prompt"></p>
+            <input type="number" class="parity-input" id="parity-input" placeholder="Decimal value..." onkeydown="if(event.key==='Enter') submitParity()">
+            <button class="primary-btn" style="width: 100%;" onclick="submitParity()">Verify Parity &amp; Resume</button>
+            <p id="parity-error" style="color: #f87171; font-weight: 700; min-height: 20px; margin-top: 10px;"></p>
+        </div>
+    </div>
+
+    <!-- Setup & Rules Modal -->
+    <div class="modal-backdrop" id="rules-modal">
+        <div class="modal-card">
+            <h2>Byte-Sized: Relay Rules &amp; Setup</h2>
+            <p>Assemble all <strong>20 Data Packets</strong> before the 12-minute countdown expires:</p>
+            <ol>
+                <li><strong>Flip the Blue Prompt:</strong> Read the active Concept card at your Home Base.</li>
+                <li><strong>Route the Yellow Value:</strong> Search the Central Data Cloud for the matching <strong>Yellow</strong> Raw Data card first.</li>
+                <li><strong>Route the Green Context:</strong> Once Yellow is locked in, select the matching <strong>Green</strong> Context/Application card.</li>
+                <li><strong>Upload to Server Rack:</strong> Submit your 3-card packet to the Firewall.</li>
+                <li><strong>Parity Check Penalty:</strong> Grabbing a red <em>Corrupted Data</em> wildcard—or uploading a mismatched packet—triggers a Firewall lockout requiring a quick 4-bit binary conversion to resume.</li>
+            </ol>
+            <div style="display: flex; gap: 10px; margin-top: 18px; align-items: center;">
+                <label style="font-size: 0.9rem; color: #cbd5e1; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <input type="checkbox" id="toggle-corrupt" checked onchange="resetGame()"> Include 3 Corrupted Data Wildcards
+                </label>
+            </div>
+            <button class="primary-btn" style="width: 100%; margin-top: 18px;" onclick="toggleRulesModal(false)">Execute Relay</button>
+        </div>
+    </div>
+
+    <!-- End Game Summary Modal -->
+    <div class="modal-backdrop" id="end-modal">
+        <div class="modal-card" style="text-align: center;">
+            <h2 id="end-title">SYSTEM AUDIT COMPLETE</h2>
+            <p id="end-summary" style="font-size: 1.05rem;"></p>
+            <button class="primary-btn" style="width: 100%; margin-top: 14px;" onclick="resetGame()">Play Another Round</button>
+        </div>
+    </div>
+
+    <script>
+        const PACKETS = [
+            { id: 1, blue: "Binary Bit (b)", yellow: "0 or 1 (Base-2 digit)", green: "Smallest unit of digital information; represents an electrical off/on state" },
+            { id: 2, blue: "Byte (B)", yellow: "8 Bits (256 possible values)", green: "Standard unit required to encode a single character of plain text" },
+            { id: 3, blue: "Nibble", yellow: "4 Bits (16 possible values)", green: "Equivalent to a single hexadecimal digit (0–F)" },
+            { id: 4, blue: "ASCII Uppercase 'A'", yellow: "Binary: 01000001 (Decimal: 65)", green: "Legacy 7-bit/8-bit standard used for basic English text encoding" },
+            { id: 5, blue: "Unicode (UTF-8)", yellow: "Up to 32 Bits (1.1M+ code points)", green: "Universal encoding standard supporting global languages and emojis" },
+            { id: 6, blue: "Hexadecimal #FF0000", yellow: "RGB: (255, 0, 0)", green: "24-bit color code representing pure red in web design and graphics" },
+            { id: 7, blue: "Hexadecimal #FFFFFF", yellow: "RGB: (255, 255, 255)", green: "Maximum intensity across all three color channels, producing pure white" },
+            { id: 8, blue: "Decimal 13 in Binary", yellow: "1101 (8 + 4 + 0 + 1)", green: "Base-2 conversion used by a CPU's Arithmetic Logic Unit (ALU)" },
+            { id: 9, blue: "Binary 101010 in Decimal", yellow: "42 (32 + 8 + 2)", green: "Base-10 translation of a 6-bit binary sequence" },
+            { id: 10, blue: "Hexadecimal 1A in Decimal", yellow: "26 ((1 × 16) + 10)", green: "Base-16 shorthand used to simplify long binary memory addresses" },
+            { id: 11, blue: "Kibibyte (KiB)", yellow: "1,024 Bytes (2^10 Bytes)", green: "IEC binary prefix used by operating systems to measure RAM capacity" },
+            { id: 12, blue: "Kilobyte (KB)", yellow: "1,000 Bytes (10^3 Bytes)", green: "SI decimal prefix used by drive manufacturers to advertise storage space" },
+            { id: 13, blue: "Integer Overflow", yellow: "Exceeding max bit limit (255 + 1 = 0)", green: "Error occurring when a calculated value is too large for its register" },
+            { id: 14, blue: "Two's Complement", yellow: "Flipping all bits and adding 1", green: "Standard method computers use to represent negative integers in binary" },
+            { id: 15, blue: "Bitmap / Raster Image", yellow: "Grid of individual colored pixels", green: "Resolution-dependent graphic format (JPEG, PNG) that pixelates when zoomed" },
+            { id: 16, blue: "Vector Graphic", yellow: "Mathematical formulas, points, & curves", green: "Infinitely scalable image format (SVG) used for logos and typography" },
+            { id: 17, blue: "Audio Sample Rate", yellow: "44.1 kHz (44,100 snapshots/sec)", green: "Frequency at which analog sound waves are measured during digitization" },
+            { id: 18, blue: "Lossless Compression", yellow: "Exact bit-for-bit reconstruction", green: "Used in ZIP archives and PNG images where zero data fidelity can be lost" },
+            { id: 19, blue: "Lossy Compression", yellow: "Permanent removal of redundant data", green: "Used in MP3 audio and JPEG photos to drastically reduce file size" },
+            { id: 20, blue: "File Metadata", yellow: "Data describing data (EXIF, date)", green: "Embedded header information used by operating systems to sort/index files" }
+        ];
+
+        const ROUND_SECONDS = 12 * 60; // 12-minute round
+        let blueDeck = [];
+        let cloudCards = [];
+        let uploadedPackets = [];
+        let selectedYellow = null;
+        let selectedGreen = null;
+        let errorCount = 0;
+        let timeLeft = ROUND_SECONDS;
+        let timerId = null;
+        let parityTarget = 0;
+
+        function shuffle(arr) {
+            const copy = [...arr];
+            for (let i = copy.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copy[i], copy[j]] = [copy[j], copy[i]];
+            }
+            return copy;
+        }
+
+        function resetGame() {
+            clearInterval(timerId);
+            document.getElementById('end-modal').style.display = 'none';
+            document.getElementById('parity-modal').style.display = 'none';
+
+            blueDeck = shuffle(PACKETS);
+            uploadedPackets = [];
+            selectedYellow = null;
+            selectedGreen = null;
+            errorCount = 0;
+            timeLeft = ROUND_SECONDS;
+
+            // Build mixed Data Cloud (Yellow + Green + optional 3 Corrupted Wildcards)
+            const pool = [];
+            PACKETS.forEach(p => {
+                pool.push({ uid: `y-${p.id}`, packetId: p.id, type: 'yellow', text: p.yellow });
+                pool.push({ uid: `g-${p.id}`, packetId: p.id, type: 'green', text: p.green });
+            });
+
+            if (document.getElementById('toggle-corrupt').checked) {
+                for (let c = 1; c <= 3; c++) {
+                    pool.push({
+                        uid: `corrupt-${c}`,
+                        packetId: -1,
+                        type: 'corrupt',
+                        text: `⚠️ CORRUPTED PACKET #0x0${c} (Do Not Route)`
+                    });
+                }
+            }
+
+            cloudCards = shuffle(pool);
+            updateHUD();
+            renderRack();
+            loadActiveBlue();
+            renderCloud();
+            startTimer();
+        }
+
+        function startTimer() {
+            timerId = setInterval(() => {
+                timeLeft--;
+                updateHUD();
+                if (timeLeft <= 0) {
+                    clearInterval(timerId);
+                    endGame(false);
+                }
+            }, 1000);
+        }
+
+        function updateHUD() {
+            document.getElementById('hud-score').textContent = `${uploadedPackets.length} / ${PACKETS.length}`;
+            document.getElementById('hud-errors').textContent = errorCount;
+            const mins = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+            const secs = String(timeLeft % 60).padStart(2, '0');
+            document.getElementById('hud-timer').textContent = `${mins}:${secs}`;
+        }
+
+        function loadActiveBlue() {
+            if (blueDeck.length === 0) {
+                clearInterval(timerId);
+                endGame(true);
+                return;
+            }
+            const current = blueDeck[0];
+            document.getElementById('slot-blue-text').textContent = current.blue;
+            clearCurrentPacket(false);
+        }
+
+        function clearCurrentPacket(reRender = true) {
+            selectedYellow = null;
+            selectedGreen = null;
+
+            const yBox = document.getElementById('slot-yellow-box');
+            yBox.className = 'slot slot-yellow';
+            document.getElementById('slot-yellow-text').textContent = 'Select matching Yellow card below';
+
+            const gBox = document.getElementById('slot-green-box');
+            gBox.className = 'slot slot-green locked';
+            document.getElementById('slot-green-text').textContent = 'Locked until Yellow is routed';
+
+            document.getElementById('relay-step-indicator').textContent = 'Step 1: Route matching YELLOW Value from Data Cloud';
+            document.getElementById('btn-upload').disabled = true;
+
+            if (reRender) renderCloud();
+        }
+
+        function renderCloud() {
+            const container = document.getElementById('cloud-container');
+            container.innerHTML = '';
+            document.getElementById('cloud-count').textContent = `${cloudCards.length} Cards Remaining in Cloud`;
+
+            const awaitingYellow = !selectedYellow;
+
+            cloudCards.forEach(card => {
+                const btn = document.createElement('button');
+                btn.className = `cloud-card card-${card.type}`;
+                btn.textContent = card.text;
+
+                if (selectedYellow && selectedYellow.uid === card.uid) btn.classList.add('selected');
+                if (selectedGreen && selectedGreen.uid === card.uid) btn.classList.add('selected');
+
+                // Enforce physical relay sequence: Yellow must be picked before Green
+                if (card.type === 'green' && awaitingYellow) {
+                    btn.disabled = true;
+                }
+
+                btn.onclick = () => handleCardPick(card);
+                container.appendChild(btn);
+            });
+        }
+
+        function handleCardPick(card) {
+            const feedback = document.getElementById('feedback-msg');
+
+            // Corrupted Data Wildcard check
+            if (card.type === 'corrupt') {
+                errorCount++;
+                updateHUD();
+                // Remove triggered wildcard from cloud so it isn't hit repeatedly
+                cloudCards = cloudCards.filter(c => c.uid !== card.uid);
+                clearCurrentPacket();
+                triggerParityCheck("You grabbed a Corrupted Data Wildcard from the cloud!");
+                return;
+            }
+
+            if (card.type === 'yellow') {
+                selectedYellow = card;
+                selectedGreen = null;
+
+                const yBox = document.getElementById('slot-yellow-box');
+                yBox.className = 'slot slot-yellow filled';
+                document.getElementById('slot-yellow-text').textContent = card.text;
+
+                const gBox = document.getElementById('slot-green-box');
+                gBox.className = 'slot slot-green';
+                document.getElementById('slot-green-text').textContent = 'Now select matching Green card below';
+
+                document.getElementById('relay-step-indicator').textContent = 'Step 2: Route matching GREEN Context from Data Cloud';
+                document.getElementById('btn-upload').disabled = true;
+                feedback.textContent = '';
+                renderCloud();
+            } else if (card.type === 'green' && selectedYellow) {
+                selectedGreen = card;
+
+                const gBox = document.getElementById('slot-green-box');
+                gBox.className = 'slot slot-green filled';
+                document.getElementById('slot-green-text').textContent = card.text;
+
+                document.getElementById('relay-step-indicator').textContent = 'Step 3: Ready to Upload Packet to Server Rack!';
+                document.getElementById('btn-upload').disabled = false;
+                renderCloud();
+            }
+        }
+
+        function uploadToServerRack() {
+            if (!selectedYellow || !selectedGreen || blueDeck.length === 0) return;
+
+            const currentBlue = blueDeck[0];
+            const feedback = document.getElementById('feedback-msg');
+
+            if (selectedYellow.packetId === currentBlue.id && selectedGreen.packetId === currentBlue.id) {
+                // Valid Packet
+                uploadedPackets.push(currentBlue);
+                cloudCards = cloudCards.filter(c => c.uid !== selectedYellow.uid && c.uid !== selectedGreen.uid);
+                blueDeck.shift();
+
+                feedback.style.color = '#34d399';
+                feedback.textContent = `✓ Packet #${currentBlue.id} (${currentBlue.blue}) verified on Server Rack!`;
+
+                updateHUD();
+                renderRack();
+                loadActiveBlue();
+                renderCloud();
+            } else {
+                // Firewall Rejection -> Parity Check
+                errorCount++;
+                updateHUD();
+                feedback.style.color = '#f87171';
+                feedback.textContent = '✗ Firewall Rejected Packet: Mismatched cards returned to cloud.';
+                clearCurrentPacket();
+                triggerParityCheck("Your 3-card packet did not match! Cards returned to the Data Cloud.");
+            }
+        }
+
+        function renderRack() {
+            const list = document.getElementById('rack-list');
+            if (uploadedPackets.length === 0) {
+                list.innerHTML = '<span style="font-size: 0.85rem; color: var(--text-muted);">No packets uploaded yet.</span>';
+                return;
+            }
+            list.innerHTML = '';
+            uploadedPackets.forEach(pkt => {
+                const chip = document.createElement('span');
+                chip.className = 'rack-chip';
+                chip.textContent = `#${pkt.id} ${pkt.blue}`;
+                list.appendChild(chip);
+            });
+        }
+
+        function triggerParityCheck(reason) {
+            const val = Math.floor(Math.random() * 14) + 2; // 2 to 15
+            parityTarget = val;
+            const bin = val.toString(2).padStart(4, '0');
+
+            document.getElementById('parity-reason').textContent = reason;
+            document.getElementById('parity-prompt').textContent = `Convert 4-bit Binary [ ${bin} ] to Decimal:`;
+            document.getElementById('parity-input').value = '';
+            document.getElementById('parity-error').textContent = '';
+            document.getElementById('parity-modal').style.display = 'flex';
+            setTimeout(() => document.getElementById('parity-input').focus(), 50);
+        }
+
+        function submitParity() {
+            const guess = parseInt(document.getElementById('parity-input').value, 10);
+            if (guess === parityTarget) {
+                document.getElementById('parity-modal').style.display = 'none';
+                document.getElementById('feedback-msg').style.color = '#38bdf8';
+                document.getElementById('feedback-msg').textContent = 'Parity Check Passed! Runner cleared to continue.';
+            } else {
+                document.getElementById('parity-error').textContent = 'Incorrect value. Use place values (8 - 4 - 2 - 1) and try again.';
+            }
+        }
+
+        function toggleRulesModal(show) {
+            document.getElementById('rules-modal').style.display = show ? 'flex' : 'none';
+        }
+
+        function endGame(completedAll) {
+            const elapsed = ROUND_SECONDS - timeLeft;
+            const mins = Math.floor(elapsed / 60);
+            const secs = String(elapsed % 60).padStart(2, '0');
+
+            document.getElementById('end-title').textContent = completedAll
+                ? '🎉 ALL 20 PACKETS UPLOADED!'
+                : '⏱️ ROUND TIME EXPIRED';
+
+            document.getElementById('end-summary').innerHTML = `
+                <strong>Verified Packets:</strong> ${uploadedPackets.length} / ${PACKETS.length}<br>
+                <strong>Time Elapsed:</strong> ${mins}m ${secs}s<br>
+                <strong>Firewall Rejections / Parity Checks:</strong> ${errorCount}
+            `;
+            document.getElementById('end-modal').style.display = 'flex';
+        }
+
+        // Initialize on load and show rules briefly
+        resetGame();
+        toggleRulesModal(true);
+    </script>
+</body>
+</html>
